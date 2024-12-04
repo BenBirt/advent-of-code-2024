@@ -28,8 +28,44 @@ fn main() {
             }
         }
     }
-
     println!("Part 1: count={}", count);
+
+    let directions: [i32; 2] = [-1, 1];
+    let mut count = 0;
+    for y in 0..word_search.len() {
+        for x in 0..word_search[0].len() {
+            for dy in directions {
+                for dx in directions {
+                    if search(&word_search, "MAS", y, dy, x, dx) {
+                        let adjacent_corner_y = y;
+                        let adjacent_corner_x = (x as i32 + 2 * dx) as usize;
+                        let new_dy = dy;
+                        let new_dx = dx * -1;
+                        if search(
+                            &word_search,
+                            "MAS",
+                            adjacent_corner_y,
+                            new_dy,
+                            adjacent_corner_x,
+                            new_dx,
+                        ) || search(
+                            &word_search,
+                            "SAM",
+                            adjacent_corner_y,
+                            new_dy,
+                            adjacent_corner_x,
+                            new_dx,
+                        ) {
+                            count += 1;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    // Due to the X-MAS shape we double-count all examples.
+    count = count / 2;
+    println!("Part 2: count={}", count);
 }
 
 fn search(
