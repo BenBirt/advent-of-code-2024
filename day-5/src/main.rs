@@ -35,20 +35,34 @@ fn main() {
         "/usr/local/google/home/benbirt/github/advent-of-code-2024/day-5/src/updates.txt",
     )
     .expect("Couldn't read input");
+    let updates: Vec<Vec<i32>> = updates_file
+        .split("\n")
+        .map(|update_str| {
+            return update_str
+                .split(",")
+                .map(|page_num_str| page_num_str.parse::<i32>().unwrap())
+                .collect();
+        })
+        .collect();
 
     let mut sum = 0;
-    for update_str in updates_file.split("\n") {
-        let page_numbers: Vec<i32> = update_str
-            .split(",")
-            .map(|page_num_str| page_num_str.parse::<i32>().unwrap())
-            .collect();
-
+    for page_numbers in &updates {
         if update_allowed(&rules, &page_numbers) {
             let middle = page_numbers[page_numbers.len() / 2];
             sum += middle;
         }
     }
     println!("Part 1: sum={}", sum);
+
+    let mut sum = 0;
+    for page_numbers in &updates {
+        if !update_allowed(&rules, &page_numbers) {
+            let new_page_numbers = swap_until_allowed(&rules, &page_numbers);
+            let middle = new_page_numbers[new_page_numbers.len() / 2];
+            sum += middle;
+        }
+    }
+    println!("Part 2: sum={}", sum);
 }
 
 fn update_allowed(rules: &HashMap<[i32; 2], Rule>, page_numbers: &Vec<i32>) -> bool {
@@ -63,4 +77,34 @@ fn update_allowed(rules: &HashMap<[i32; 2], Rule>, page_numbers: &Vec<i32>) -> b
         }
     }
     return true;
+}
+
+fn swap_until_allowed(rules: &HashMap<[i32; 2], Rule>, page_numbers: &Vec<i32>) -> Vec<i32> {
+    let mut new_page_numbers = page_numbers.clone();
+
+    for i in 0..new_page_numbers.len() {
+        let mut swap_was_required = true;
+        while swap_was_required {
+            let mut did_swap = false;
+            for j in (i + 1)..new_page_numbers.len() {
+                let first_page_number = new_page_numbers[i];
+                let second_page_number = new_page_numbers[j];
+                let pair = [first_page_number, second_page_number];
+                if rules.contains_key(&pair) {
+                    if !rules[&pair].allows_order(first_page_number, second_page_number) {
+                        // swap
+                        new_page_numbers[i] = second_page_number;
+                        new_page_numbers[j] = first_page_number;
+                        // reset
+                        did_swap = true;
+                        break;
+                    }
+                }
+            }
+            if !did_swap {
+                swap_was_required = false;
+            }
+        }
+    }
+    return new_page_numbers;
 }
