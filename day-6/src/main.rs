@@ -88,7 +88,12 @@ fn follow_path(map: &Vec<Vec<char>>, start: Position) -> i32 {
     let mut current_direction = Direction::Up;
     loop {
         // mark
-        visited.entry(current_pos).or_insert(HashSet::new()).insert(current_direction.clone());
+        let visited_directions_for_current_pos = visited.entry(current_pos).or_insert(HashSet::new());
+        if visited_directions_for_current_pos.contains(&current_direction) {
+            // we must be in a loop. eject!
+            return -1;
+        }
+        visited_directions_for_current_pos.insert(current_direction.clone());
 
         // take next step
         let next_pos = current_direction.step(&current_pos);
