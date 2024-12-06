@@ -1,4 +1,7 @@
-use std::{collections::{HashMap, HashSet}, fs};
+use std::{
+    collections::{HashMap, HashSet},
+    fs,
+};
 
 #[derive(PartialEq, Eq, Hash, Clone, Copy)]
 struct Position {
@@ -68,30 +71,50 @@ fn main() {
     for (y, line_str) in contents.split("\n").into_iter().enumerate() {
         let mut line = Vec::new();
         for (x, char) in line_str.chars().into_iter().enumerate() {
-            line.push(char);
             if char == '^' {
                 start = Position {
                     x: x as i32,
                     y: y as i32,
                 };
+                line.push('.');
+            } else {
+                line.push(char);
             }
         }
         map.push(line);
     }
 
-    println!("Part one: count={}", follow_path(&map, start.clone()));
+    let initial_path = follow_path(&map, start.clone(), Option::None).unwrap();
+    println!("Part one: count={}", initial_path.len());
+
+    // this is quite slow, maybe memoisation/dynamic programming would help.
+    let mut count = 0;
+    for path_pos in initial_path {
+        if path_pos == start {
+            continue;
+        }
+        if follow_path(&map, start.clone(), Option::Some(path_pos)).is_none() {
+            count += 1;
+        }
+    }
+    println!("Part two: count={}", count);
 }
 
-fn follow_path(map: &Vec<Vec<char>>, start: Position) -> i32 {
+fn follow_path(
+    map: &Vec<Vec<char>>,
+    start: Position,
+    obstruction: Option<Position>,
+) -> Option<HashSet<Position>> {
     let mut visited = HashMap::new();
     let mut current_pos = start;
     let mut current_direction = Direction::Up;
     loop {
         // mark
-        let visited_directions_for_current_pos = visited.entry(current_pos).or_insert(HashSet::new());
+        let visited_directions_for_current_pos =
+            visited.entry(current_pos).or_insert(HashSet::new());
         if visited_directions_for_current_pos.contains(&current_direction) {
             // we must be in a loop. eject!
-            return -1;
+            return Option::None;
         }
         visited_directions_for_current_pos.insert(current_direction.clone());
 
@@ -103,12 +126,13 @@ fn follow_path(map: &Vec<Vec<char>>, start: Position) -> i32 {
             break;
         }
 
+        if obstruction.is_some_and(|pos| next_pos == pos) {
+            current_direction = current_direction.turn();
+            continue;
+        }
         match map[next_pos.y as usize][next_pos.x as usize] {
             '#' => {
                 current_direction = current_direction.turn();
-            }
-            'X' => {
-                current_pos = next_pos;
             }
             '.' => {
                 current_pos = next_pos;
@@ -119,5 +143,5 @@ fn follow_path(map: &Vec<Vec<char>>, start: Position) -> i32 {
             ),
         }
     }
-    return visited.len() as i32;
+    return Option::Some(visited.keys().cloned().collect());
 }
