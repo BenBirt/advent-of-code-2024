@@ -1,5 +1,6 @@
-use std::fs;
+use std::{collections::{HashMap, HashSet}, fs};
 
+#[derive(PartialEq, Eq, Hash, Clone, Copy)]
 struct Position {
     x: i32,
     y: i32,
@@ -17,6 +18,7 @@ impl Position {
     }
 }
 
+#[derive(PartialEq, Eq, Hash, Clone)]
 enum Direction {
     Up,
     Right,
@@ -77,12 +79,16 @@ fn main() {
         map.push(line);
     }
 
-    let mut count = 1;
+    println!("Part one: count={}", follow_path(&map, start.clone()));
+}
+
+fn follow_path(map: &Vec<Vec<char>>, start: Position) -> i32 {
+    let mut visited = HashMap::new();
     let mut current_pos = start;
     let mut current_direction = Direction::Up;
     loop {
         // mark
-        map[current_pos.y as usize][current_pos.x as usize] = 'X';
+        visited.entry(current_pos).or_insert(HashSet::new()).insert(current_direction.clone());
 
         // take next step
         let next_pos = current_direction.step(&current_pos);
@@ -101,7 +107,6 @@ fn main() {
             }
             '.' => {
                 current_pos = next_pos;
-                count += 1;
             }
             _ => panic!(
                 "encountered {} at (x, y)=({}, {})",
@@ -109,5 +114,5 @@ fn main() {
             ),
         }
     }
-    println!("Part one: count={}", count);
+    return visited.len() as i32;
 }
