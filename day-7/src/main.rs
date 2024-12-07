@@ -1,14 +1,15 @@
-use std::fs;
+use std::{collections::HashSet, fs};
 
 struct Equation {
     numbers: Vec<i64>,
     result: i64,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 enum Operator {
     Add,
     Multiply,
+    Concatenate,
 }
 
 fn compute(numbers: &Vec<i64>, operators: &Vec<Operator>) -> i64 {
@@ -20,34 +21,49 @@ fn compute(numbers: &Vec<i64>, operators: &Vec<Operator>) -> i64 {
         match operators_iter.next().unwrap() {
             Operator::Add => current_result += next.unwrap(),
             Operator::Multiply => current_result *= next.unwrap(),
+            Operator::Concatenate => {
+                current_result = format!("{}{}", current_result, next.unwrap())
+                    .parse::<i64>()
+                    .unwrap()
+            }
         }
         next = numbers_iter.next();
     }
     return current_result;
 }
 
-fn can_satisfy(result: i64, numbers: &Vec<i64>, operators: &mut Vec<Operator>) -> bool {
+fn can_satisfy(
+    result: i64,
+    possible_operators: &HashSet<Operator>,
+    numbers: &Vec<i64>,
+    operators: &mut Vec<Operator>,
+) -> bool {
     if operators.len() == numbers.len() - 1 {
         return compute(numbers, operators) == result;
     }
 
-    operators.push(Operator::Add);
-    if can_satisfy(result, numbers, operators) {
-        return true;
+    for possible_operator in possible_operators {
+        operators.push(*possible_operator);
+        if can_satisfy(result, possible_operators, numbers, operators) {
+            return true;
+        }
+        operators.pop();
     }
-    operators.pop();
-    operators.push(Operator::Multiply);
-    if can_satisfy(result, numbers, operators) {
-        return true;
-    }
-    operators.pop();
     return false;
 }
 
 impl Equation {
-    fn find_operators_to_satisfy(&self) -> Option<Vec<Operator>> {
+    fn find_operators_to_satisfy(
+        &self,
+        possible_operators: &HashSet<Operator>,
+    ) -> Option<Vec<Operator>> {
         let mut operators = Vec::new();
-        if can_satisfy(self.result, &self.numbers, &mut operators) {
+        if can_satisfy(
+            self.result,
+            possible_operators,
+            &self.numbers,
+            &mut operators,
+        ) {
             return Option::Some(operators);
         }
         return Option::None;
@@ -79,10 +95,28 @@ fn main() {
         .collect();
 
     let mut sum = 0;
-    for equation in equations {
-        if equation.find_operators_to_satisfy().is_some() {
+    for equation in &equations {
+        if equation
+            .find_operators_to_satisfy(&HashSet::from([Operator::Add, Operator::Multiply]))
+            .is_some()
+        {
             sum += equation.result;
         }
     }
     println!("Part one: sum={}", sum);
+
+    let mut sum = 0;
+    for equation in &equations {
+        if equation
+            .find_operators_to_satisfy(&HashSet::from([
+                Operator::Add,
+                Operator::Multiply,
+                Operator::Concatenate,
+            ]))
+            .is_some()
+        {
+            sum += equation.result;
+        }
+    }
+    println!("Part two: sum={}", sum);
 }
