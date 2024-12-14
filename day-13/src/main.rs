@@ -19,26 +19,33 @@ impl Button {
         }
     }
 
-    fn press(&self, times: u32) -> Location {
+    fn press(&self, times: u64) -> Location {
         Location {
-            x: self.dx * times,
-            y: self.dy * times,
+            x: self.dx as u64 * times,
+            y: self.dy as u64 * times,
         }
     }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 struct Location {
-    x: u32,
-    y: u32,
+    x: u64,
+    y: u64,
 }
 
 impl Location {
     fn new(line: &String) -> Location {
         let mut matches = RE.find_iter(line);
         Location {
-            x: matches.nth(0).unwrap().as_str().parse::<u32>().unwrap(),
-            y: matches.nth(0).unwrap().as_str().parse::<u32>().unwrap(),
+            x: matches.nth(0).unwrap().as_str().parse::<u64>().unwrap(),
+            y: matches.nth(0).unwrap().as_str().parse::<u64>().unwrap(),
+        }
+    }
+
+    fn add_offset(&self, x: u64, y: u64) -> Location {
+        Location {
+            x: self.x + x,
+            y: self.y + y,
         }
     }
 }
@@ -63,47 +70,32 @@ struct Machine {
 
 impl Machine {
     fn cheapest_solution(&self) -> Option<Solution> {
-        let mut cheapest_solution: Option<Solution> = Option::None;
-        for a_presses in 0..101 {
-            let location_from_pressing_a = self.a.press(a_presses);
-            if location_from_pressing_a.x > self.prize.x
-                || location_from_pressing_a.y > self.prize.y
-            {
-                break;
-            }
-            for b_presses in 0..101 {
-                let location = location_from_pressing_a + self.b.press(b_presses);
-                if location.x > self.prize.x || location.y > self.prize.y {
-                    break;
-                }
-                if location == self.prize {
-                    let new_solution = Solution {
-                        a_presses,
-                        b_presses,
-                    };
-                    match cheapest_solution {
-                        Option::None => cheapest_solution = Option::Some(new_solution),
-                        Option::Some(ref old_solution) => {
-                            if new_solution.cost() < old_solution.cost() {
-                                cheapest_solution = Option::Some(new_solution)
-                            }
-                        }
-                    }
-                }
-            }
+        let a_presses = (self.b.dx as i64 * self.prize.y as i64
+            - self.b.dy as i64 * self.prize.x as i64)
+            / (self.b.dx as i64 * self.a.dy as i64 - self.b.dy as i64 * self.a.dx as i64);
+        let b_presses = (self.prize.x as i64 - self.a.dx as i64 * a_presses) / self.b.dx as i64;
+
+        if a_presses < 0 || b_presses < 0 {
+            return Option::None;
         }
-        return cheapest_solution;
+        let a_presses = a_presses as u64;
+        let b_presses = b_presses as u64;
+        let location = self.a.press(a_presses) + self.b.press(b_presses);
+        if location == self.prize {
+            return Option::Some(Solution { a_presses, b_presses })
+        }
+        return Option::None;
     }
 }
 
 #[derive(Debug)]
 struct Solution {
-    a_presses: u32,
-    b_presses: u32,
+    a_presses: u64,
+    b_presses: u64,
 }
 
 impl Solution {
-    fn cost(&self) -> u32 {
+    fn cost(&self) -> u64 {
         self.a_presses * 3 + self.b_presses
     }
 }
@@ -114,7 +106,7 @@ fn main() {
     )
     .expect("Couldn't read input");
 
-    let machines: Vec<Machine> = contents
+    let mut machines: Vec<Machine> = contents
         .split("\n\n")
         .map(|machine_str| {
             let mut lines = machine_str.split("\n");
@@ -126,11 +118,25 @@ fn main() {
         })
         .collect();
 
-    let total_cost: u32 = machines.iter().map(|machine| {
-        match machine.cheapest_solution() {
+    let total_cost: u64 = machines
+        .iter()
+        .map(|machine| match machine.cheapest_solution() {
             Option::None => return 0,
             Option::Some(solution) => return solution.cost(),
-        }
-    }).sum();
+        })
+        .sum();
     println!("Part one: total_cost={}", total_cost);
+
+    machines.iter_mut().for_each(|machine| {
+        machine.prize = machine.prize.add_offset(10000000000000, 10000000000000)
+    });
+
+    let total_cost: u64 = machines
+        .iter()
+        .map(|machine| match machine.cheapest_solution() {
+            Option::None => return 0,
+            Option::Some(solution) => return solution.cost(),
+        })
+        .sum();
+    println!("Part two: total_cost={}", total_cost);
 }
